@@ -1,0 +1,51 @@
+{
+    "name": "mj-zana/audit",
+    "description": "Content revisions for Zana applications: who changed what and when, per locale, with history and restore",
+    "type": "library",
+    "keywords": ["zana", "audit", "revisions", "history", "versioning"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.5",
+        "mj-zana/core": "^2.2",
+        "mj-zana/database": "^2.0"
+    },
+    "require-dev": {
+        "mj-zana/security": "^2.2",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5"
+    },
+    "suggest": {
+        "mj-zana/security": "To record the signed-in user as the author"
+    },
+    "autoload": {
+        "psr-4": {
+            "Zana\\Audit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Zana\\Audit\\Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        { "type": "path", "url": "../zana-container", "options": { "symlink": true, "versions": { "mj-zana/container": "2.2.0" } } },
+        { "type": "path", "url": "../zana-configuration", "options": { "symlink": true, "versions": { "mj-zana/configuration": "2.2.0" } } },
+        { "type": "path", "url": "../zana-core", "options": { "symlink": true, "versions": { "mj-zana/core": "2.2.0" } } },
+        { "type": "path", "url": "../zana-database", "options": { "symlink": true, "versions": { "mj-zana/database": "2.2.0" } } },
+        { "type": "path", "url": "../zana-ddd", "options": { "symlink": true, "versions": { "mj-zana/ddd": "2.2.0" } } },
+        { "type": "path", "url": "../zana-console", "options": { "symlink": true, "versions": { "mj-zana/console": "2.2.0" } } },
+        { "type": "path", "url": "../zana-http", "options": { "symlink": true, "versions": { "mj-zana/http": "2.2.0" } } },
+        { "type": "path", "url": "../zana-security", "options": { "symlink": true, "versions": { "mj-zana/security": "2.2.0" } } },
+        { "type": "path", "url": "../zana-session", "options": { "symlink": true, "versions": { "mj-zana/session": "2.2.0" } } },
+        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.2.0" } } }
+    ],
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=1G"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
