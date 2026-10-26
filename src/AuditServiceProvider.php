@@ -26,14 +26,14 @@ final class AuditServiceProvider extends ServiceProvider
                 assert($connection instanceof ConnectionInterface);
 
                 return new DatabaseRevisionStore($connection, $r->get(ConfigurationInterface::class)->string('audit.table', 'audit_revisions'));
-            })
+            })->uses(ConnectionInterface::class, ConfigurationInterface::class)
             ->scoped(Revisions::class, static function (ServiceResolverInterface $r): Revisions {
                 $store = $r->get(RevisionStoreInterface::class);
                 assert($store instanceof RevisionStoreInterface);
                 $security = class_exists(SecurityContext::class) && $r->has(SecurityContext::class) ? $r->get(SecurityContext::class) : null;
 
                 return new Revisions($store, $security instanceof SecurityContext ? static fn (): ?string => $security->user()?->identifier() : null);
-            });
+            })->uses(RevisionStoreInterface::class, SecurityContext::class);
     }
 
     public function origin(): string
