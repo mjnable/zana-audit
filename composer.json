@@ -6,16 +6,25 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
-        "mj-zana/core": "^2.4",
-        "mj-zana/database": "^2.0"
+        "mj-zana/core": "^2.11",
+        "mj-zana/database": "^2.12"
     },
     "require-dev": {
+        "mj-zana/console": "^2.0",
+        "mj-zana/events": "^2.0",
+        "mj-zana/http": "^2.0",
+        "mj-zana/mediator": "^2.0",
         "mj-zana/security": "^2.2",
+        "mj-zana/testing": "^2.0",
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.5"
     },
     "suggest": {
-        "mj-zana/security": "To record the signed-in user as the author"
+        "mj-zana/security": "To record the signed-in user as the author or actor, and (2.15) its sign-in events in the audit log",
+        "mj-zana/events": "To record mj-zana/security's events in the audit log (2.15)",
+        "mj-zana/mediator": "For #[Audited] commands (2.15)",
+        "mj-zana/console": "For audit:install-log, audit:verify, audit:prune and audit:log (2.15)",
+        "mj-zana/http": "To record the client address of each entry (2.15)"
     },
     "autoload": {
         "psr-4": {
@@ -37,7 +46,13 @@
         { "type": "path", "url": "../zana-http", "options": { "symlink": true, "versions": { "mj-zana/http": "2.12.0" } } },
         { "type": "path", "url": "../zana-security", "options": { "symlink": true, "versions": { "mj-zana/security": "2.12.0" } } },
         { "type": "path", "url": "../zana-session", "options": { "symlink": true, "versions": { "mj-zana/session": "2.12.0" } } },
-        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.12.0" } } }
+        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.12.0" } } },
+        { "type": "path", "url": "../zana-events", "options": { "symlink": true, "versions": { "mj-zana/events": "2.12.0" } } },
+        { "type": "path", "url": "../zana-mediator", "options": { "symlink": true, "versions": { "mj-zana/mediator": "2.12.0" } } },
+        { "type": "path", "url": "../zana-testing", "options": { "symlink": true, "versions": { "mj-zana/testing": "2.12.0" } } },
+        { "type": "path", "url": "../zana-filesystem", "options": { "symlink": true, "versions": { "mj-zana/filesystem": "2.12.0" } } },
+        { "type": "path", "url": "../zana-serialization", "options": { "symlink": true, "versions": { "mj-zana/serialization": "2.12.0" } } },
+        { "type": "path", "url": "../zana-validation", "options": { "symlink": true, "versions": { "mj-zana/validation": "2.12.0" } } }
     ],
     "scripts": {
         "test": "phpunit",
