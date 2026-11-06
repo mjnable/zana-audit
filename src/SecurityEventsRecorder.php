@@ -7,6 +7,8 @@ namespace Zana\Audit;
 use Zana\Security\Event\PasswordResetRequested;
 use Zana\Security\Event\PasswordResetTokenUsed;
 use Zana\Security\Event\RecoveryCodeUsed;
+use Zana\Security\Event\RoleAssigned;
+use Zana\Security\Event\RoleRevoked;
 use Zana\Security\Event\SecurityEvent;
 use Zana\Security\Event\SignedOut;
 use Zana\Security\Event\SignInFailed;
@@ -43,6 +45,8 @@ final readonly class SecurityEventsRecorder
             $event instanceof TwoFactorEnabled, $event instanceof TwoFactorDisabled => [$event->userId, "user:{$event->userId}", null, []],
             $event instanceof TwoFactorFailed => [null, "user:{$event->userId}", $event->clientIp, ['reason' => $event->reason]],
             $event instanceof RecoveryCodeUsed => [$event->userId, "user:{$event->userId}", $event->clientIp, ['remaining' => $event->remaining]],
+            // 2.17: role assignments, by whoever was signed in
+            $event instanceof RoleAssigned, $event instanceof RoleRevoked => [$event->byUserId, "user:{$event->userId}", null, ['role' => $event->role, 'scope' => $event->scope]],
             default => [null, null, null, []],
         };
 

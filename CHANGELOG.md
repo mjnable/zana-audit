@@ -3,6 +3,13 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.17.0 — Unreleased
+
+### Added
+
+- The security audit log records mj-zana/security's `RoleAssigned` and `RoleRevoked`: who changed
+  whose role, and where.
+
 ## 2.16.0 — 2026-11-06
 
 ### Added
