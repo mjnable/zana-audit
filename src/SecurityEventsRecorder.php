@@ -6,10 +6,14 @@ namespace Zana\Audit;
 
 use Zana\Security\Event\PasswordResetRequested;
 use Zana\Security\Event\PasswordResetTokenUsed;
+use Zana\Security\Event\RecoveryCodeUsed;
 use Zana\Security\Event\SecurityEvent;
 use Zana\Security\Event\SignedOut;
 use Zana\Security\Event\SignInFailed;
 use Zana\Security\Event\SignInSucceeded;
+use Zana\Security\Event\TwoFactorDisabled;
+use Zana\Security\Event\TwoFactorEnabled;
+use Zana\Security\Event\TwoFactorFailed;
 
 /**
  * Records mj-zana/security's events in the security audit log (FE-58):
@@ -35,6 +39,10 @@ final readonly class SecurityEventsRecorder
             $event instanceof SignInFailed => [null, null, $event->clientIp, ['login' => $event->login, 'reason' => $event->reason]],
             $event instanceof SignedOut => [$event->userId, "user:{$event->userId}", $event->clientIp, []],
             $event instanceof PasswordResetRequested, $event instanceof PasswordResetTokenUsed => [null, "user:{$event->userId}", null, []],
+            // 2.16: second factors
+            $event instanceof TwoFactorEnabled, $event instanceof TwoFactorDisabled => [$event->userId, "user:{$event->userId}", null, []],
+            $event instanceof TwoFactorFailed => [null, "user:{$event->userId}", $event->clientIp, ['reason' => $event->reason]],
+            $event instanceof RecoveryCodeUsed => [$event->userId, "user:{$event->userId}", $event->clientIp, ['remaining' => $event->remaining]],
             default => [null, null, null, []],
         };
 

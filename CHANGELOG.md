@@ -3,6 +3,14 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.16.0 — Unreleased
+
+### Added
+
+- The security audit log records mj-zana/security's second-factor events: `TwoFactorEnabled`,
+  `TwoFactorDisabled`, `TwoFactorFailed` (with the reason) and `RecoveryCodeUsed` (with the codes
+  left).
+
 ## 2.15.0 — 2026-11-06
 
 ### Added
