@@ -3,6 +3,15 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.20.0 — Unreleased
+
+### Security
+
+- `audit.log.key` keys the hash chain: each hash is an HMAC-SHA256, which nobody who can only write to the database can
+  forge (S21). Every entry after `audit.log.unkeyed_until` must be keyed, so a log rewritten in the unkeyed form fails
+  `verify()` too. Without a key, the chain uses SHA-256 as before.
+- `check` warns (`audit.log_key`) when the chain is on without a key, and `verify()` says when an entry predates the key.
+
 ## 2.17.0 — 2026-11-06
 
 ### Added

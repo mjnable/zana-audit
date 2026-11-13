@@ -73,7 +73,7 @@ final class AuditLogApplicationTest extends TestCase
         $this->assertSame(['audit.log'], self::ids($check->findings($app)), 'no table yet');
         $this->assertStringContainsString('_create_audit_log_tables.php', $console->run('audit:install-log')->output());
         $this->assertSame(0, $console->run('migrate')->exitCode());
-        $this->assertSame([], self::ids($check->findings($app)));
+        $this->assertSame(['audit.log_key'], self::ids($check->findings($app)), 'a chain without a key is a warning (2.20)');
 
         $events = $app->container()->get(EventDispatcherInterface::class);
         assert($events instanceof EventDispatcherInterface);
@@ -101,7 +101,7 @@ final class AuditLogApplicationTest extends TestCase
         $db = $app->container()->get(ConnectionInterface::class);
         assert($db instanceof ConnectionInterface);
         $db->table(AuditLogStore::TABLE)->where('sequence', 1)->update(['client_ip' => '203.0.113.66']);
-        $this->assertSame(['audit.chain'], self::ids($check->findings($app)), 'an edited entry');
+        $this->assertSame(['audit.log_key', 'audit.chain'], self::ids($check->findings($app)), 'an edited entry, in a chain without a key');
         $this->assertSame(1, $console->run('audit:verify')->exitCode());
     }
 

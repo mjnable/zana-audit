@@ -45,13 +45,19 @@ final readonly class AuditLogCheck implements ApplicationCheck
         if (!$store->chained()) {
             return [];
         }
+        $unkeyed = $store->keyed() ? [] : [new Finding(
+            'audit.log_key',
+            Severity::Warning,
+            'The audit chain has no key, so someone who can write to the database can rewrite entries and their hashes unnoticed.',
+            hint: 'Set audit.log.key from the environment (APP_AUDIT__LOG__KEY), and audit.log.unkeyed_until to the newest sequence written before it.',
+        )];
 
         $report = $store->verify(1000);
         if ($report->intact) {
-            return [];
+            return $unkeyed;
         }
 
-        return [new Finding(
+        return [...$unkeyed, new Finding(
             'audit.chain',
             Severity::Error,
             "The security audit log's hash chain is broken at entry {$report->brokenAt}: {$report->problem}",

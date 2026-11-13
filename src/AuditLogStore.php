@@ -15,10 +15,18 @@ use Zana\Database\ConnectionInterface;
  * so an edited, inserted or removed entry breaks the chain, which verify()
  * finds. Appends then go one at a time: each first updates the head row,
  * which holds the last sequence and hash, so concurrent appends wait for it.
+ *
+ * A chain without a key uses SHA-256, which anyone who can write to the
+ * table can recompute. With a key (audit.log.key, 2.20, S21), each hash is
+ * an HMAC that nobody without the key can forge. The key lives outside the
+ * database, and so does the boundary: every entry after audit.log.unkeyed_until must
+ * carry a keyed hash, so a log rewritten in the unkeyed form fails too.
  */
 final class AuditLogStore
 {
     public const string TABLE = 'audit_log';
+
+    public const int MINIMUM_KEY_LENGTH = 32;
 
     private const int PAGE = 1000;
 
@@ -33,8 +41,21 @@ final class AuditLogStore
         private readonly string $table = self::TABLE,
         private readonly bool $chain = false,
         ?\Closure $clock = null,
+        #[\SensitiveParameter] private readonly ?string $key = null,
+        private readonly int $unkeyedUntil = 0,
     ) {
+        if ($key !== null && strlen($key) < self::MINIMUM_KEY_LENGTH) {
+            throw new \InvalidArgumentException('audit.log.key must be at least ' . self::MINIMUM_KEY_LENGTH . ' characters; generate one with: php -r "echo bin2hex(random_bytes(32));"');
+        }
         $this->clock = $clock ?? static fn (): \DateTimeImmutable => new \DateTimeImmutable();
+    }
+
+    /**
+     * Whether the chain's hashes are keyed (2.20).
+     */
+    public function keyed(): bool
+    {
+        return $this->key !== null;
     }
 
     public function chained(): bool
@@ -72,7 +93,7 @@ final class AuditLogStore
             $sequence = (int) ($state['sequence'] ?? 0);
             $previous = is_string($state['last_hash'] ?? null) ? $state['last_hash'] : null;
 
-            $row += ['sequence' => $sequence, 'previous_hash' => $previous, 'hash' => self::hash($previous, $sequence, $row)];
+            $row += ['sequence' => $sequence, 'previous_hash' => $previous, 'hash' => $this->hash($previous, $sequence, $row)];
             $tx->table($this->table)->insert($row);
             $tx->table($head)->where('id', 1)->update(['last_hash' => $row['hash']]);
 
@@ -132,8 +153,12 @@ final class AuditLogStore
                 if ($previous !== null && $stored !== $previous[1]) {
                     return new ChainReport(false, $checked, $sequence, 'The entry does not follow the one before it.');
                 }
-                if (!hash_equals(self::hash($stored, $sequence, $row), (string) ($row['hash'] ?? ''))) {
-                    return new ChainReport(false, $checked, $sequence, 'The entry was changed after it was written.');
+                if (!hash_equals($this->hash($stored, $sequence, $row), (string) ($row['hash'] ?? ''))) {
+                    $unkeyed = $this->key !== null && hash_equals(self::digest($stored, $sequence, $row), (string) ($row['hash'] ?? ''));
+
+                    return new ChainReport(false, $checked, $sequence, $unkeyed
+                        ? "The entry has no keyed hash. If it was written before audit.log.key was set, set audit.log.unkeyed_until to the last such entry's sequence; otherwise it was rewritten."
+                        : 'The entry was changed after it was written.');
                 }
                 $previous = [$sequence, (string) $row['hash']];
                 $after = $sequence;
@@ -183,9 +208,27 @@ final class AuditLogStore
     /**
      * @param array<string, mixed> $row
      */
-    private static function hash(?string $previous, int $sequence, array $row): string
+    private function hash(?string $previous, int $sequence, array $row): string
     {
-        return hash('sha256', json_encode([
+        return $this->key !== null && $sequence > $this->unkeyedUntil
+            ? hash_hmac('sha256', self::canonical($previous, $sequence, $row), $this->key)
+            : self::digest($previous, $sequence, $row);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private static function digest(?string $previous, int $sequence, array $row): string
+    {
+        return hash('sha256', self::canonical($previous, $sequence, $row));
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private static function canonical(?string $previous, int $sequence, array $row): string
+    {
+        return json_encode([
             $previous,
             $sequence,
             $row['occurred_at'] ?? null,
@@ -195,7 +238,7 @@ final class AuditLogStore
             $row['client_ip'] ?? null,
             $row['correlation_id'] ?? null,
             $row['details'] ?? null,
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     /**

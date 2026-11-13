@@ -186,6 +186,73 @@ final class AuditLogTest extends TestCase
         $behavior->handle(new BrokenAudit(), static fn (): string => 'never');
     }
 
+    #[DataProvider('drivers')]
+    public function testAKeyedChainCannotBeRewrittenWithoutTheKey(string $driver): void
+    {
+        $this->store($driver, chain: true);
+        $key = str_repeat('k', 40);
+        $store = $this->keyed($key);
+        $store->append('security.sign_in', 'user:7');
+        $store->append('payout.account_changed', 'user:7', 'organizer:12', details: ['bank' => 'Rawbank']);
+        $store->append('order.refund', 'staff-9', 'order:9', details: ['amount' => 2500]);
+        $this->assertTrue($store->verify()->intact);
+
+        // The audit's attack (S21): change entry 2, then recompute every hash after it, unkeyed, and the head.
+        $this->db->table(AuditLogStore::TABLE)->where('sequence', 2)->update(['details' => '{"bank":"Attacker Bank"}']);
+        $this->recomputeWithoutTheKey();
+        $report = $store->verify();
+        $this->assertFalse($report->intact, 'a rewrite without the key is found');
+        $this->assertSame(1, $report->brokenAt, 'from the first entry the attacker rewrote');
+
+        $this->assertFalse($this->keyed(str_repeat('w', 40))->verify()->intact, 'another key does not verify it either');
+    }
+
+    #[DataProvider('drivers')]
+    public function testAKeyAddedToAnExistingChainNamesItsBoundary(string $driver): void
+    {
+        $unkeyed = $this->store($driver, chain: true);
+        $unkeyed->append('security.sign_in', 'user:1');
+        $unkeyed->append('security.sign_in', 'user:2');
+
+        $key = str_repeat('k', 40);
+        $this->keyed($key, unkeyedUntil: 2)->append('security.sign_in', 'user:3');
+        $this->assertTrue($this->keyed($key, unkeyedUntil: 2)->verify()->intact, 'the two older entries stay unkeyed');
+
+        $report = $this->keyed($key)->verify();
+        $this->assertFalse($report->intact, 'without the boundary, the unkeyed entries are not trusted');
+        $this->assertStringContainsString('audit.log.unkeyed_until', (string) $report->problem, 'and the report says how to set it');
+
+        $this->recomputeWithoutTheKey();
+        $this->assertFalse($this->keyed($key, unkeyedUntil: 2)->verify()->intact, 'entries after the boundary must be keyed');
+    }
+
+    public function testAShortKeyIsRefused(): void
+    {
+        $this->db = ConnectionFactory::create(['driver' => 'sqlite', 'database' => ':memory:']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->keyed('short');
+    }
+
+    private function keyed(string $key, int $unkeyedUntil = 0): AuditLogStore
+    {
+        return new AuditLogStore($this->db, chain: true, clock: fn (): \DateTimeImmutable => new \DateTimeImmutable($this->now, new \DateTimeZone('UTC')), key: $key, unkeyedUntil: $unkeyedUntil);
+    }
+
+    /**
+     * What someone with write access to the table, and Zana's source, can do: recompute the unkeyed chain.
+     */
+    private function recomputeWithoutTheKey(): void
+    {
+        $previous = null;
+        foreach ($this->db->table(AuditLogStore::TABLE)->orderBy('sequence')->get() as $row) {
+            $hash = hash('sha256', json_encode([$previous, (int) $row['sequence'], $row['occurred_at'], $row['action'], $row['actor'], $row['subject'], $row['client_ip'], $row['correlation_id'], $row['details']], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            $this->db->table(AuditLogStore::TABLE)->where('sequence', $row['sequence'])->update(['previous_hash' => $previous, 'hash' => $hash]);
+            $previous = $hash;
+        }
+        $this->db->table(AuditLogStore::TABLE . '_head')->where('id', 1)->update(['last_hash' => $previous]);
+    }
+
     private function store(string $driver, bool $chain = false): AuditLogStore
     {
         $settings = Databases::settings($driver);

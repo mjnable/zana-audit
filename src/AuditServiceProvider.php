@@ -62,7 +62,13 @@ final class AuditServiceProvider extends ServiceProvider
                 assert($connection instanceof ConnectionInterface);
                 $config = self::config($r);
 
-                return new AuditLogStore($connection, $config->string('audit.log.table', AuditLogStore::TABLE), $config->bool('audit.log.chain', false));
+                return new AuditLogStore(
+                    $connection,
+                    $config->string('audit.log.table', AuditLogStore::TABLE),
+                    $config->bool('audit.log.chain', false),
+                    key: $config->has('audit.log.key') ? $config->string('audit.log.key') : null,
+                    unkeyedUntil: $config->int('audit.log.unkeyed_until', 0),
+                );
             })->uses(ConnectionInterface::class, ConfigurationInterface::class)
             ->scoped(AuditLog::class, static function (ServiceResolverInterface $r): AuditLog {
                 $request = class_exists(RequestContext::class) && $r->has(RequestContext::class) ? $r->get(RequestContext::class) : null;
