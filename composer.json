@@ -46,7 +46,7 @@
         { "type": "path", "url": "../zana-http", "options": { "symlink": true, "versions": { "mj-zana/http": "2.12.0" } } },
         { "type": "path", "url": "../zana-security", "options": { "symlink": true, "versions": { "mj-zana/security": "2.12.0" } } },
         { "type": "path", "url": "../zana-session", "options": { "symlink": true, "versions": { "mj-zana/session": "2.12.0" } } },
-        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.12.0" } } },
+        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.21.0" } } },
         { "type": "path", "url": "../zana-events", "options": { "symlink": true, "versions": { "mj-zana/events": "2.12.0" } } },
         { "type": "path", "url": "../zana-mediator", "options": { "symlink": true, "versions": { "mj-zana/mediator": "2.12.0" } } },
         { "type": "path", "url": "../zana-testing", "options": { "symlink": true, "versions": { "mj-zana/testing": "2.12.0" } } },
