@@ -22,6 +22,7 @@ use Zana\Security\Event\PasswordResetRequested;
 use Zana\Security\Event\SecurityEvent;
 use Zana\Security\Event\SignedOut;
 use Zana\Security\Event\SignInFailed;
+use Zana\Security\Event\SpamRefused;
 use Zana\Security\Event\SignInSucceeded;
 use Zana\Security\Event\RecoveryCodeUsed;
 use Zana\Security\Event\RoleAssigned;
@@ -150,6 +151,7 @@ final class AuditLogTest extends TestCase
         $events->dispatch(new TwoFactorFailed('7', TwoFactorFailed::INVALID_CODE, '198.51.100.7'));
         $events->dispatch(new RecoveryCodeUsed('7', 9, '198.51.100.7'));
         $events->dispatch(new RoleAssigned('9', 'scanner', 'event:11', '7'));
+        $events->dispatch(new SpamRefused('contact', ['links: 3 link(s), at most 1'], 1, '198.51.100.7'));
 
         $rows = array_reverse(array_map(static fn (AuditEntry $e): array => [$e->action, $e->actor, $e->subject, $e->clientIp, $e->details], (new AuditLog($this->storeOn()))->entries()));
         $this->assertSame([
@@ -160,6 +162,7 @@ final class AuditLogTest extends TestCase
             ['security.two_factor_failed', null, 'user:7', '198.51.100.7', ['reason' => 'invalid_code']],
             ['security.recovery_code_used', '7', 'user:7', '198.51.100.7', ['remaining' => 9]],
             ['security.role_assigned', '7', 'user:9', null, ['role' => 'scanner', 'scope' => 'event:11']],
+            ['security.spam_refused', null, 'form:contact', '198.51.100.7', ['reasons' => ['links: 3 link(s), at most 1'], 'points' => 1]],
         ], $rows);
         $this->assertSame('req-7', $this->storeOn()->entries(limit: 1)[0]->correlationId);
     }

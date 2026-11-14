@@ -3,6 +3,13 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.24.0 — Unreleased
+
+### Added
+
+- `security.spam_refused` in the audit log: a form post refused by its spam rules (mj-zana/security 2.24, FE-63),
+  with the form, the rules that found something and the points, never the text.
+
 ## 2.20.0 — 2026-11-14
 
 ### Security

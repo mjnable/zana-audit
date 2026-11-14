@@ -13,6 +13,7 @@ use Zana\Security\Event\SecurityEvent;
 use Zana\Security\Event\SignedOut;
 use Zana\Security\Event\SignInFailed;
 use Zana\Security\Event\SignInSucceeded;
+use Zana\Security\Event\SpamRefused;
 use Zana\Security\Event\TwoFactorDisabled;
 use Zana\Security\Event\TwoFactorEnabled;
 use Zana\Security\Event\TwoFactorFailed;
@@ -47,6 +48,8 @@ final readonly class SecurityEventsRecorder
             $event instanceof RecoveryCodeUsed => [$event->userId, "user:{$event->userId}", $event->clientIp, ['remaining' => $event->remaining]],
             // 2.17: role assignments, by whoever was signed in
             $event instanceof RoleAssigned, $event instanceof RoleRevoked => [$event->byUserId, "user:{$event->userId}", null, ['role' => $event->role, 'scope' => $event->scope]],
+            // 2.24: a form post refused by its spam rules, with why, never the text
+            $event instanceof SpamRefused => [null, "form:{$event->form}", $event->clientIp, ['reasons' => $event->reasons, 'points' => $event->points]],
             default => [null, null, null, []],
         };
 
