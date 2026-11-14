@@ -119,6 +119,24 @@ final class AuditLogStore
     }
 
     /**
+     * One action's entries since a moment, newest first, at most $limit
+     * (2.25), for summaries such as audit:spam.
+     *
+     * @return list<AuditEntry>
+     */
+    public function since(string $action, \DateTimeImmutable $since, int $limit = 10000): array
+    {
+        $rows = $this->connection->table($this->table)
+            ->where('action', $action)
+            ->where('occurred_at', '>=', $since->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'))
+            ->orderBy('id', 'desc')
+            ->limit($limit)
+            ->get();
+
+        return array_map(self::entry(...), $rows);
+    }
+
+    /**
      * Check the hash chain: every entry's hash, that each follows the previous
      * one without a gap, and that the last is the head's. The oldest remaining
      * entry is the anchor, as prune() removes entries from the oldest end.

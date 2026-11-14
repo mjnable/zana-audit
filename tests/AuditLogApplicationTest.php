@@ -29,6 +29,7 @@ use Zana\Mediator\HandlerMap;
 use Zana\Mediator\MediatorInterface;
 use Zana\Mediator\MediatorServiceProvider;
 use Zana\Security\Event\SignInSucceeded;
+use Zana\Security\Event\SpamRefused;
 use Zana\Testing\ConsoleTester;
 
 final class RefundOrderHandler
@@ -104,6 +105,34 @@ final class AuditLogApplicationTest extends TestCase
         $db->table(AuditLogStore::TABLE)->where('sequence', 1)->update(['client_ip' => '203.0.113.66']);
         $this->assertSame(['audit.log_key', 'audit.chain'], self::ids($check->findings($app)), 'an edited entry, in a chain without a key');
         $this->assertSame(1, $console->run('audit:verify')->exitCode());
+    }
+
+    public function testSpamRefusalsAreSummarisedByFormAndRule(): void
+    {
+        $app = $this->app(['audit.log.enabled' => true, 'audit.log.chain' => true, 'audit.log.retention_days' => 365]);
+        $console = new ConsoleTester($app->container()->get(ConsoleKernel::class));
+        $console->run('audit:install-log');
+        $console->run('migrate');
+
+        $this->assertStringContainsString('No form post was refused as spam in the last 7 day(s).', $console->run('audit:spam')->output());
+
+        $events = $app->container()->get(EventDispatcherInterface::class);
+        assert($events instanceof EventDispatcherInterface);
+        $events->dispatch(new SpamRefused('contact', ['links: 3 link(s), at most 1', 'blocked_terms: blocked term(s): casino'], 2, '198.51.100.7'));
+        $events->dispatch(new SpamRefused('contact', ['links: 2 link(s), at most 1'], 1, '198.51.100.8'));
+        $events->dispatch(new SpamRefused('newsletter', ['mine: 1 point(s)'], 1, '198.51.100.9'));
+
+        $result = $console->run('audit:spam --days=30');
+        $output = (string) preg_replace('/\s+/', ' ', $result->output());
+        $this->assertSame(0, $result->exitCode());
+        $this->assertStringContainsString('3 form post(s) refused as spam in the last 30 day(s)', $output);
+        $this->assertMatchesRegularExpression('/contact 2 \d{4}-\d\d-\d\dT/', $output);
+        $this->assertStringContainsString('contact links 2', $output);
+        $this->assertStringContainsString('contact blocked_terms 1', $output);
+        $this->assertStringContainsString('newsletter mine 1', $output);
+        $this->assertStringNotContainsString('198.51.100', $output, 'no client addresses');
+        $this->assertSame(1, $console->run('audit:spam --days=0')->exitCode());
+        $this->assertSame(1, $console->run('audit:spam --days=week')->exitCode());
     }
 
     public function testCheckSaysWhenEntriesAreKeptForever(): void

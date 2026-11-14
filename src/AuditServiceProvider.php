@@ -6,6 +6,7 @@ namespace Zana\Audit;
 
 use Zana\Audit\Console\InstallLogCommand;
 use Zana\Audit\Console\LogCommand;
+use Zana\Audit\Console\SpamCommand;
 use Zana\Audit\Console\PruneCommand;
 use Zana\Audit\Console\VerifyCommand;
 use Zana\Audit\Inspection\AuditLogCheck;
@@ -114,7 +115,7 @@ final class AuditServiceProvider extends ServiceProvider
             ->tag(InspectionSection::TAG, AuditLogSection::class);
 
         if (class_exists(ConsoleKernel::class)) {
-            foreach ([InstallLogCommand::class, VerifyCommand::class, PruneCommand::class, LogCommand::class] as $command) {
+            foreach ([InstallLogCommand::class, VerifyCommand::class, PruneCommand::class, LogCommand::class, SpamCommand::class] as $command) {
                 $services->singleton($command)->tag(ConsoleKernel::TAG, $command);
             }
         }

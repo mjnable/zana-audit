@@ -3,6 +3,15 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.25.0 — Unreleased
+
+### Added
+
+- `audit:spam --days=7`: the form posts refused as spam, by form and by rule, so a rule that refuses real messages is
+  noticed; no text and no client addresses. `AuditLogStore::since()` reads one action's entries since a moment.
+- `security.bot_verification_failed` in the audit log: a request whose CAPTCHA token proved no person (mj-zana/security
+  2.25), with the action, the reasons and the score, never the token.
+
 ## 2.24.1 — 2026-11-14
 
 ### Added

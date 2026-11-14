@@ -13,6 +13,7 @@ use Zana\Security\Event\SecurityEvent;
 use Zana\Security\Event\SignedOut;
 use Zana\Security\Event\SignInFailed;
 use Zana\Security\Event\SignInSucceeded;
+use Zana\Security\Event\BotVerificationFailed;
 use Zana\Security\Event\SpamRefused;
 use Zana\Security\Event\TwoFactorDisabled;
 use Zana\Security\Event\TwoFactorEnabled;
@@ -50,6 +51,8 @@ final readonly class SecurityEventsRecorder
             $event instanceof RoleAssigned, $event instanceof RoleRevoked => [$event->byUserId, "user:{$event->userId}", null, ['role' => $event->role, 'scope' => $event->scope]],
             // 2.24: a form post refused by its spam rules, with why, never the text
             $event instanceof SpamRefused => [null, "form:{$event->form}", $event->clientIp, ['reasons' => $event->reasons, 'points' => $event->points]],
+            // 2.25: a request whose CAPTCHA token proved no person, with why, never the token
+            $event instanceof BotVerificationFailed => [null, "path:{$event->path}", $event->clientIp, ['action' => $event->action, 'reasons' => $event->reasons, 'score' => $event->score]],
             default => [null, null, null, []],
         };
 
