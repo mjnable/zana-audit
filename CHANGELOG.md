@@ -3,6 +3,15 @@
 All Zana packages share one version number and are released together. A release that did
 not change this package is not listed.
 
+## 2.24.1 — Unreleased
+
+### Added
+
+- `audit.retention` in `check`: a warning when the audit log is on and `audit.log.retention_days` is not set, so entries
+  are kept forever without anyone having chosen it; an error when it is set to a value `audit:prune` cannot use (`0`
+  refuses to run; `1.5` or text is taken as not set and keeps every entry). Digits from the environment, as
+  `APP_AUDIT__LOG__RETENTION_DAYS=730`, are accepted, as `audit:prune` accepts them.
+
 ## 2.24.0 — 2026-11-14
 
 ### Added

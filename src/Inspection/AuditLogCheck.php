@@ -16,6 +16,11 @@ use Zana\Core\Inspection\Severity;
  * be read, so security events would fail to be recorded; audit.chain when
  * the newest 1,000 entries of a chained log do not verify (audit:verify
  * checks them all). The store is given lazily.
+ *
+ * audit.retention (2.24.1): a warning when audit.log.retention_days is not
+ * set, so entries, spam refusals among them, are kept forever without
+ * anyone having chosen it; an error when it is set to something audit:prune
+ * refuses.
  */
 final readonly class AuditLogCheck implements ApplicationCheck
 {
@@ -31,6 +36,45 @@ final readonly class AuditLogCheck implements ApplicationCheck
         if (!$this->enabled) {
             return [];   // revisions only: the application does not keep a security audit log
         }
+
+        return [...self::retention($application), ...$this->log()];
+    }
+
+    /**
+     * @return list<Finding>
+     */
+    private static function retention(ApplicationInterface $application): array
+    {
+        $days = $application->config()->get('audit.log.retention_days');
+        $prune = ConsoleScript::command('audit:prune');
+        if ($days === null) {
+            return [new Finding(
+                'audit.retention',
+                Severity::Warning,
+                'Audit log entries are kept forever: audit.log.retention_days is not set.',
+                hint: "Choose how long your obligations and investigations need, e.g. 'retention_days' => 730 in config/audit.php, and run {$prune} every day. Pruning removes the oldest entries; the chain stays verifiable from the oldest one kept.",
+            )];
+        }
+        // As audit:prune reads it: a whole number, or its digits from the environment (APP_AUDIT__LOG__RETENTION_DAYS=730).
+        $whole = is_int($days) || (is_string($days) && ctype_digit($days));
+        if (!$whole || (int) $days < 1) {
+            return [new Finding(
+                'audit.retention',
+                Severity::Error,
+                'audit.log.retention_days is ' . json_encode($days) . ', not a whole number of days of at least 1, so '
+                    . ($whole ? "{$prune} refuses to run." : "{$prune} takes it as not set and keeps every entry."),
+                hint: 'Set it to a number of days, e.g. 730.',
+            )];
+        }
+
+        return [];
+    }
+
+    /**
+     * @return list<Finding>
+     */
+    private function log(): array
+    {
         try {
             $store = ($this->store)();
             $store->counts();

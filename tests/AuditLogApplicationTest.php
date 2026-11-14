@@ -20,6 +20,7 @@ use Zana\Core\ApplicationInterface;
 use Zana\Core\Inspection\ApplicationCheck;
 use Zana\Core\Inspection\Finding;
 use Zana\Core\Inspection\InspectionSection;
+use Zana\Core\Inspection\Severity;
 use Zana\Core\ScopeKeys;
 use Zana\Database\ConnectionInterface;
 use Zana\Database\DatabaseServiceProvider;
@@ -103,6 +104,39 @@ final class AuditLogApplicationTest extends TestCase
         $db->table(AuditLogStore::TABLE)->where('sequence', 1)->update(['client_ip' => '203.0.113.66']);
         $this->assertSame(['audit.log_key', 'audit.chain'], self::ids($check->findings($app)), 'an edited entry, in a chain without a key');
         $this->assertSame(1, $console->run('audit:verify')->exitCode());
+    }
+
+    public function testCheckSaysWhenEntriesAreKeptForever(): void
+    {
+        $findings = function (array $config): array {
+            $app = $this->app($config);
+            $console = new ConsoleTester($app->container()->get(ConsoleKernel::class));
+            $console->run('audit:install-log');
+            $console->run('migrate');
+
+            return self::tagged($app, ApplicationCheck::TAG, AuditLogCheck::class)->findings($app);
+        };
+
+        $forever = $findings(['audit.log.enabled' => true]);
+        $this->assertSame(['audit.retention'], self::ids($forever), '2.24.1: kept forever, and nobody chose it');
+        $this->assertSame(Severity::Warning, $forever[0]->severity);
+        $this->assertSame('Audit log entries are kept forever: audit.log.retention_days is not set.', $forever[0]->message);
+        $this->assertStringContainsString('audit:prune', (string) $forever[0]->hint);
+
+        $this->assertSame([], self::ids($findings(['audit.log.enabled' => true, 'audit.log.retention_days' => 730])), 'chosen');
+        $this->assertSame([], self::ids($findings(['audit.log.enabled' => true, 'audit.log.retention_days' => '730'])), 'from the environment, as audit:prune reads it');
+        foreach ([0, -5, '0'] as $wrong) {
+            $bad = $findings(['audit.log.enabled' => true, 'audit.log.retention_days' => $wrong]);
+            $this->assertSame(['audit.retention'], self::ids($bad), (string) json_encode($wrong));
+            $this->assertSame(Severity::Error, $bad[0]->severity);
+            $this->assertStringContainsString('refuses to run', $bad[0]->message);
+        }
+        foreach ([1.5, '-5', 'two years'] as $silent) {
+            $bad = $findings(['audit.log.enabled' => true, 'audit.log.retention_days' => $silent]);
+            $this->assertSame(Severity::Error, $bad[0]->severity, (string) json_encode($silent));
+            $this->assertStringContainsString('takes it as not set and keeps every entry', $bad[0]->message);
+        }
+        $this->assertSame([], self::ids($findings([])), 'no audit log, nothing to keep');
     }
 
     public function testAnApplicationWithRevisionsOnlyIsUnchanged(): void
